@@ -46,7 +46,7 @@ ram.runtime = "1500M"
 
     [install.registration]
     ask.en = "Do you want to enable visitor's registration ?"
-    ask.fr = "Voulez-vous autoriser les inscriptions sur votre application ?"
+    ask.fr = "Voulez-vous autoriser les visiteurs à s'inscrire sur votre application ?"
     type = "boolean"
     default = "true"
     yes = "true"
@@ -54,7 +54,7 @@ ram.runtime = "1500M"
 
     [install.ldap]
     ask.en = "Do you want to enable ldap authentication ?"
-    ask.fr = "Voulez-vous autoriser les utilisateurs LDAP ?"
+    ask.fr = "Voulez-vous autoriser l'authentification LDAP ?"
     type = "boolean"
     default = "true"
     yes = "true"

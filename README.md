@@ -9,20 +9,20 @@ It shall NOT be edited by hand.
 </h1>
 
 
-[![Version: 1.0~ynh21](https://img.shields.io/badge/Version-1.0~ynh21-rgba(0,150,0,1)?style=for-the-badge)](https://ci-apps.yunohost.org/ci/apps/my_webapp/)
+[![Version: 1.3.0~ynh2](https://img.shields.io/badge/Version-1.3.0~ynh2-rgba(0,150,0,1)?style=for-the-badge)](https://ci-apps.yunohost.org/ci/apps/saltcorn)
 
 <div align="center">
-<a href="https://apps.yunohost.org/app/my_webapp"><img height="100px" src="https://github.com/YunoHost/yunohost-artwork/raw/refs/heads/main/badges/neopossum-badges/badge_more_info_on_the_appstore.svg"/></a>
-<a href="https://github.com/YunoHost-Apps/my_webapp_ynh/issues"><img height="100px" src="https://github.com/YunoHost/yunohost-artwork/raw/refs/heads/main/badges/neopossum-badges/badge_report_an_issue.svg"/></a>
+<a href="https://apps.yunohost.org/app/saltcorn"><img height="100px" src="https://github.com/YunoHost/yunohost-artwork/raw/refs/heads/main/badges/neopossum-badges/badge_more_info_on_the_appstore.svg"/></a>
+<a href="https://github.com/YunoHost-Apps/saltcorn_ynh/issues"><img height="100px" src="https://github.com/YunoHost/yunohost-artwork/raw/refs/heads/main/badges/neopossum-badges/badge_report_an_issue.svg"/></a>
 </div>
 
 ## 📦 Developer info
 
-[![Automatic tests level](https://apps.yunohost.org/badge/cilevel/my_webapp)](https://ci-apps.yunohost.org/ci/apps/my_webapp/)
+[![Automatic tests level](https://apps.yunohost.org/badge/cilevel/my_webapp)](https://ci-apps.yunohost.org/ci/apps/saltcorn/)
 
 🛠️ Upstream Saltcorn repository: https://github.com/saltcorn/saltcorn
 
-Pull request are welcome and should target the [`testing` branch](https://github.com/YunoHost-Apps/my_webapp_ynh/tree/testing).
+Pull request are welcome and should target the [`testing` branch](https://github.com/YunoHost-Apps/saltcorn_ynh/tree/testing).
 
 The `testing` branch can be tested using:
 ```

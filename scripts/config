@@ -1,0 +1,123 @@
+#!/bin/bash
+source /usr/share/yunohost/helpers
+ynh_abort_if_errors
+
+get__registration(){
+registration_status=$(ynh_psql_db_shell <<< "SELECT value->>'v' FROM public._sc_config WHERE key = 'allow_signup';" \
+    | tail -n +3 | head -n 1 | tr -d '[:space:]')
+
+    case "$registration_status" in
+        "true")
+            echo "true"
+            ;;
+        "false")
+            echo "false"
+            ;;
+        *)
+            ynh_print_warn "Unexpected output from database: '$registration_status' Fallback to value in settings.yml"
+            registration_status=$(ynh_app_setting_get --key=registration)
+            echo "$registration_status"
+            ;;
+    esac
+}
+get__ldap() {
+    ldap_status=$(ynh_psql_db_shell <<< "
+        SELECT EXISTS (
+            SELECT 1
+            FROM public._sc_plugins
+            WHERE name = 'ldap-auth'
+              AND configuration @> jsonb_build_object(
+                    'url', 'ldap://127.0.0.1',
+                    'bindDN', '',
+                    'searchBase', 'ou=users,dc=yunohost,dc=org',
+                    'searchFilter', '(|(mail={{username}})(uid={{username}}))',
+                    'bindCredentials', ''
+              )
+        );
+    " | tail -n +3 | head -n 1 | tr -d '[:space:]')
+
+    case "$ldap_status" in
+        "t")
+            echo "true"
+            ;;
+        "f")
+            echo "false"
+            ;;
+        *)
+            ynh_print_warn "Unexpected output from database: '$ldap_status'. Fallback to value in settings.yml"
+            ldap_status=$(ynh_app_setting_get --key=ldap)
+            echo "$ldap_status"
+            ;;
+    esac
+}
+set__registration() {
+    if [ "$registration" ==  "false" ]; then
+        # If registration was set to 0, disable registration
+        ynh_psql_db_shell  <<<  "UPDATE public._sc_config SET value = jsonb_build_object('v', false) WHERE key = 'allow_signup';"
+        ynh_print_info "Visitor's registration  disabled"
+    elif [ "$registration" == "true" ]; then
+        # If registration was set to 1, enable registration
+        ynh_psql_db_shell  <<<  "UPDATE public._sc_config SET value = jsonb_build_object('v', true) WHERE key = 'allow_signup';"
+        ynh_print_info "Visitor's registration enabled"
+    fi
+    ynh_app_setting_set --key=registration --value="$registration"
+}
+set__ldap() {
+    case "$ldap" in
+        true)
+            ynh_psql_db_shell <<< "
+DO \$\$
+BEGIN
+   IF EXISTS (SELECT 1 FROM public._sc_plugins WHERE name='ldap-auth') THEN
+       UPDATE public._sc_plugins
+       SET configuration = jsonb_build_object(
+           'url','ldap://127.0.0.1',
+           'bindDN','',
+           'searchBase','ou=users,dc=yunohost,dc=org',
+           'searchFilter','(|(mail={{username}})(uid={{username}}))',
+           'bindCredentials',''
+       ),
+       version = '0.1.6'
+       WHERE name='ldap-auth';
+   ELSE
+       INSERT INTO public._sc_plugins(name, source, location, version, configuration)
+       VALUES (
+           'ldap-auth', 'npm', '@saltcorn/ldap-auth', '0.1.6',
+           jsonb_build_object(
+               'url','ldap://127.0.0.1',
+               'bindDN','',
+               'searchBase','ou=users,dc=yunohost,dc=org',
+               'searchFilter','(|(mail={{username}})(uid={{username}}))',
+               'bindCredentials',''
+           )
+       );
+   END IF;
+END;
+\$\$;"
+            ;;
+        false)
+            ynh_psql_db_shell <<< "DELETE FROM public._sc_plugins WHERE name='ldap-auth';"
+            ;;
+    esac
+
+    ynh_app_setting_set --key=ldap --value="$ldap"
+}
+run__patch() {
+
+rm /var/www/saltcorn/node_modules/@saltcorn/server/routes/admin.js
+cp -pr /etc/yunohost/apps/saltcorn/conf/patch_admin.js /var/www/saltcorn/node_modules/@saltcorn/server/routes/admin.js
+systemctl restart saltcorn
+CONFIG_FILE="/etc/yunohost/apps/saltcorn/config_panel.toml"
+
+# Supprimer le bloc [main.conf] jusqu’à la prochaine section
+sed -i '/^\[main\.conf\]/,/^style = "warning"/d' "$CONFIG_FILE"
+
+# Ajouter le nouveau bloc [main.conf.patch] à la fin du fichier
+cat <<'EOF' >> "$CONFIG_FILE"
+
+[main.conf]
+name = "Le patch a été appliqué"
+EOF
+
+}
+ynh_app_config_run $1

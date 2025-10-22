@@ -1,0 +1,82 @@
+#!/bin/bash
+
+#=================================================
+# GENERIC START
+#=================================================
+# IMPORT GENERIC HELPERS
+#=================================================
+
+source _common.sh
+source /usr/share/yunohost/helpers
+
+version=$(ynh_app_upstream_version)
+
+#=================================================
+# STOP SYSTEMD SERVICE
+#=================================================
+ynh_script_progression "Stopping $app's systemd service..."
+
+ynh_systemctl --service="$app" --action="stop" --log_path="systemd"
+
+
+#=================================================
+# DOWNLOAD, CHECK AND UNPACK SOURCE
+#=================================================
+ynh_script_progression "Upgrading source files..."
+
+# Download, check integrity, uncompress and patch the source from manifest.toml
+## rm -rf "$install_dir"/* "$install_dir"/.[!.]* "$install_dir"/..?*
+ynh_setup_source --dest_dir="$install_dir" --full_replace=1 --keep=.local
+
+pushd "$install_dir"
+  ynh_exec_as_app mkdir -p $install_dir/.config
+  ynh_exec_as_app npm config set prefix $install_dir/.local
+  ynh_exec_as_app npm config set cache $install_dir/.cache
+  ynh_hide_warnings ynh_exec_as_app npm install --legacy-peer-deps
+  ynh_hide_warnings ynh_exec_as_app npm install sd-notify
+
+  ynh_hide_warnings ynh_exec_as_app npm  run tsc
+
+popd
+
+#=================================================
+# UPDATE A CONFIG FILE
+#=================================================
+ynh_script_progression "Updating $app's configuration files..."
+
+jwt_secret=$(ynh_app_setting_get --app=$app --key=jwt_secret)
+session_secret=$(ynh_app_setting_get --app=$app --key=session_secret)
+
+
+
+ynh_config_add --template=".env" --destination="$install_dir/.env"
+
+#=================================================
+# REAPPLY SYSTEM CONFIGURATIONS
+#=================================================
+ynh_script_progression "Upgrading system configurations related to $app..."
+
+ynh_config_add_nginx
+
+ynh_config_add_systemd
+yunohost service add "$app" --log="/var/log/$app/$app.log"
+
+ynh_config_add_logrotate
+touch /var/log/$app/$app.log
+chown -R $app:www-data /var/log/$app/
+
+#=================================================
+# START SYSTEMD SERVICE
+#=================================================
+ynh_script_progression "Starting $app's systemd service..."
+
+ynh_systemctl --service="$app" --action="start"
+
+#=================================================
+# END OF SCRIPT
+#=================================================
+
+ynh_script_progression "Upgrade of $app completed"
+
+
+

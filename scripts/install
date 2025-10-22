@@ -1,0 +1,171 @@
+#!/bin/bash
+
+#=================================================
+# GENERIC START
+#=================================================
+# IMPORT GENERIC HELPERS
+#=================================================
+
+# source _common.sh
+source /usr/share/yunohost/helpers
+
+#=================================================
+# CHECK FREE RAM (minimum 2 GB)
+#=================================================
+
+ynh_print_info --message="Check free RAM..."
+
+RAM_MB=$(free -m | awk '/^Mem:/{print $7}')
+
+if [ "$RAM_MB" -lt 1000 ]; then
+    ynh_die "Only ${RAM_MB} MB of free RAM. At least 1 GB (1000 MB) is needed to install Saltcorn."
+else
+    ynh_print_info --message="${RAM_MB} Mo RAM detected — OK."
+fi
+
+#=================================================
+# INITIALIZE SETTINGS
+#=================================================
+ynh_script_progression "Generating $app's secrets..."
+
+session_secret=$(ynh_string_random --length=24)
+jwt_secret=$(ynh_string_random --length=24)
+
+#=================================================
+# CREATE A PostgreSQL DATABASE
+#=================================================
+ynh_script_progression "Configuring a PostgreSQL database..."
+
+ynh_psql_db_shell <<< 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+ynh_psql_db_shell <<< "GRANT ALL PRIVILEGES ON DATABASE $db_name TO $db_user;"
+ynh_psql_db_shell <<< "ALTER DATABASE $db_name OWNER TO $db_user;"
+ynh_psql_db_shell <<< "ALTER USER $db_name WITH SUPERUSER;"
+
+#=================================================
+# DOWNLOAD, CHECK AND UNPACK SOURCE
+#=================================================
+ynh_script_progression "Setting up source files..."
+
+ynh_setup_source --dest_dir="$install_dir"
+
+#=================================================
+# ADMIN USER CONFIGURATION
+#=================================================
+ynh_script_progression "Adding $app's configuration files..."
+
+admin_mail=$(ynh_user_get_info --username=$admin --key="mail")
+ynh_hide_warnings npm install bcryptjs
+admin_pw_hash=$(node -e "console.log(require('bcryptjs').hashSync('"$admin_pw"', 10));")
+
+#=================================================
+# APP ENV CONFIGURATION
+#=================================================
+ynh_config_add --template=".env" --destination="$install_dir/.env"
+
+#=================================================
+# INSTALL 
+#=================================================
+ynh_script_progression "Installing $app's dependencies..."
+
+pushd "$install_dir"
+  ynh_exec_as_app mkdir -p $install_dir/.config
+  ynh_exec_as_app npm config set prefix $install_dir/.local
+  ynh_exec_as_app npm config set cache $install_dir/.cache
+  ynh_hide_warnings ynh_exec_as_app npm install --legacy-peer-deps
+  ynh_hide_warnings ynh_exec_as_app npm install sd-notify
+
+ynh_script_progression "Building $app..."
+
+  ynh_hide_warnings ynh_exec_as_app npm run tsc
+
+
+ynh_script_progression "Initializing $app's database..."
+
+ynh_exec_as_app bash -c "
+  cd $install_dir
+  export HOME=$install_dir
+  export NODE_ENV=production
+  export DATABASE_URL=postgres://$db_user:$db_pwd@localhost/$db_name
+  npx saltcorn reset-schema -f
+"
+popd
+
+#=================================================
+# POPULATE DATABASE 
+#=================================================
+ynh_script_progression "Configuring $app's authentication and backup parameters..."
+
+### ADMIN USER
+ynh_psql_db_shell  <<< "INSERT INTO public.users (email, password, role_id) VALUES ('"$admin_mail"', '"$admin_pw_hash"', '1');"
+
+### VISITORS REGISTRATION
+
+if [ "$registration" = "false" ] ; then
+ynh_psql_db_shell  <<<  "INSERT INTO public._sc_config (key, value) VALUES ('allow_signup', jsonb_build_object('v', false)) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;"
+else
+ynh_psql_db_shell  <<<  "INSERT INTO public._sc_config (key, value) VALUES ('allow_signup', jsonb_build_object('v', false)) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;"
+fi
+
+### SETTING BACKUP LOCAL DIRECTORY (/home/yunohost.app/saltcorn) AND DEFAULT BACKUP FREQUENCY
+
+ynh_psql_db_shell  <<<  "INSERT INTO public._sc_config (key, value) VALUES ('auto_backup_frequency', jsonb_build_object('v', 'Weekly')) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;"
+ynh_psql_db_shell  <<<  "INSERT INTO public._sc_config (key, value) VALUES ('auto_backup_destination', jsonb_build_object('v', 'Local directory')) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;"
+ynh_psql_db_shell  <<<  "INSERT INTO public._sc_config (key, value) VALUES ('auto_backup_directory', jsonb_build_object('v', '"$data_dir/backups"')) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;"
+
+### LDAP AUTHENTICATION 
+
+if [ "$ldap" = "true" ] ; then
+    
+    ynh_psql_db_shell  <<<  "INSERT INTO public._sc_plugins (name, source, location, version, configuration) 
+        VALUES (
+            'ldap-auth',
+            'npm', 
+            '@saltcorn/ldap-auth', 
+            '0.1.6', 
+            jsonb_build_object(
+                'url', 'ldap://127.0.0.1', 
+                'bindDN', '', 
+                'searchBase', 'ou=users,dc=yunohost,dc=org',
+                'searchFilter', '(|(mail={{username}})(uid={{username}}))',
+                'bindCredentials', ''
+                )
+        ) ON CONFLICT (id) 
+          DO UPDATE SET 
+            configuration = EXCLUDED.configuration,
+            version = EXCLUDED.version;"
+    echo "LDAP authentication enabled"
+else
+echo "LDAP authentication not enabled"
+fi
+
+#=================================================
+# SYSTEM CONFIGURATION
+#=================================================
+ynh_script_progression "Adding system configurations related to $app..."
+
+ynh_config_add_nginx
+
+# ynh_app_setting_set --app=$app --key=version --value=$version
+ynh_app_setting_set --app=$app --key=jwt_secret --value=$jwt_secret
+ynh_app_setting_set --app=$app --key=session_secret --value=$session_secret
+
+ynh_config_add_systemd
+
+ynh_config_add_logrotate
+
+touch /var/log/$app/$app.log
+chown -R $app:www-data /var/log/$app/
+yunohost service add "$app" --description="Saltcorn No-Code Editor" --log="/var/log/$app/$app.log"
+
+#=================================================
+# START SYSTEMD SERVICE
+#=================================================
+ynh_script_progression "Starting $app's systemd service..."
+
+ynh_systemctl --service="$app" --action="start"
+
+#=================================================
+# END OF SCRIPT
+#=================================================
+
+ynh_script_progression "Installation of $app completed"

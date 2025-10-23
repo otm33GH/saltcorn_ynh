@@ -1,0 +1,100 @@
+--- admin.js	2025-08-31 17:56:48.000000000 +0200
++++ patch_admin.js	2025-10-23 22:42:30.188147000 +0200
+@@ -1,3 +1,4 @@
++// this patch enables route to /admin/auto-backup-download/
+ /**
+  * @category server
+  * @module routes/admin
+@@ -123,6 +124,7 @@
+ const npmFetch = require("npm-registry-fetch");
+ const Tag = require("@saltcorn/data/models/tag");
+ const PluginInstaller = require("@saltcorn/plugins-loader/plugin_installer.js");
++const TableConstraint = require("@saltcorn/data/models/table_constraints");
+ const MarkdownIt = require("markdown-it"),
+   md = new MarkdownIt();
+ 
+@@ -914,18 +916,19 @@
+     const { filename } = req.params;
+     const isRoot = db.getTenantSchema() === db.connectObj.default_schema;
+     const backup_file_prefix = getState().getConfig("backup_file_prefix");
++    const auto_backup_directory = getState().getConfig("auto_backup_directory");
++    const fp = File.normalise_in_base(auto_backup_directory, filename);
++
+     if (
+       !isRoot ||
+-      !(
+-        path.resolve(filename).startsWith(backup_file_prefix) &&
+-        filename.endsWith(".zip")
+-      )
++      !(filename.startsWith(backup_file_prefix) && filename.endsWith(".zip")) ||
++      !fp
+     ) {
+       res.redirect("/admin/backup");
+       return;
+     }
+-    const auto_backup_directory = getState().getConfig("auto_backup_directory");
+-    res.download(path.join(auto_backup_directory, filename), filename, {
++
++    res.download(fp, filename, {
+       dotfiles: "allow",
+     });
+   })
+@@ -4193,13 +4196,19 @@
+       await getState().refresh_triggers();
+     }
+     if (form.values.tables) {
+-      await db.deleteWhere("_sc_table_constraints");
+       await db.deleteWhere("_sc_model_instances");
+       await db.deleteWhere("_sc_models");
+ 
+-      const tables = await Table.find();
++      //in revers order of creation in case any provided tables depend on real tables
++      const tables = await Table.find({}, { orderBy: "id", orderDesc: true });
+ 
+       for (const table of tables) {
++        const constraints = await TableConstraint.find({ table_id: table.id });
++
++        for (const con of constraints) {
++          await con.delete();
++        }
++
+         await db.deleteWhere("_sc_triggers", {
+           table_id: table.id,
+         });
+@@ -4214,6 +4223,18 @@
+       }
+       for (const table of tables) {
+         if (table.name !== "users") await table.delete();
++        else
++          // reset users table row
++          await table.update({
++            min_role_read: 1,
++            min_role_write: 1,
++            description: "",
++            ownership_formula: null,
++            ownership_field_id: null,
++            versioned: false,
++            has_sync_info: false,
++            is_user_group: false,
++          });
+       }
+     }
+     if (form.values.files) {
+@@ -4362,6 +4383,8 @@
+         "log_ip_address",
+         "log_level",
+         ...(isRoot || tenants_set_npm_modules ? ["npm_available_js_code"] : []),
++        "localize_csv_download",
++        "bom_csv_download",
+       ],
+       action: "/admin/dev",
+     });
+@@ -4449,7 +4472,7 @@
+             "Only functions declared as <code>function name(...) {...}</code> or <code>async function name(...) {...}</code> will be available in formulae and code actions. Declare a constant <code>k</code> as <code>globalThis.k = ...</code> In scope: " +
+             a(
+               {
+-                href: "/admin/jsdoc/classes/_saltcorn_data.models.Table-1.html",
++                href: "/admin/jsdoc/classes/_saltcorn_data.models_table.Table.html",
+                 target: "_blank",
+               },
+               "Table"

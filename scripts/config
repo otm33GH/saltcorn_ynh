@@ -102,22 +102,5 @@ END;
 
     ynh_app_setting_set --key=ldap --value="$ldap"
 }
-run__patch() {
 
-rm /var/www/saltcorn/node_modules/@saltcorn/server/routes/admin.js
-cp -pr /etc/yunohost/apps/saltcorn/conf/patch_admin.js /var/www/saltcorn/node_modules/@saltcorn/server/routes/admin.js
-systemctl restart saltcorn
-CONFIG_FILE="/etc/yunohost/apps/saltcorn/config_panel.toml"
-
-# Supprimer le bloc [main.conf] jusqu’à la prochaine section
-sed -i '/^\[main\.conf\]/,/^style = "warning"/d' "$CONFIG_FILE"
-
-# Ajouter le nouveau bloc [main.conf.patch] à la fin du fichier
-cat <<'EOF' >> "$CONFIG_FILE"
-
-[main.conf]
-name = "Le patch a été appliqué"
-EOF
-
-}
 ynh_app_config_run $1

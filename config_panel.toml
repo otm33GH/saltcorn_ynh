@@ -25,13 +25,3 @@ ask.en = "Allow yunohost LDAP users to authenticate"
 type = "boolean"
 yes = "true"
 no = "false"
-
-
-[main.conf]
-name = "Patch"
-[main.conf.patch]
-type = "button"
-ask = "patcher"
-help.fr = "Appliquer le patch `admin.js` du dépôt saltcorn pour pouvoir télécharger les archives de sauvegarde depuis l'interface."
-help.en = "Apply the `admin.js` patch from the Saltcorn repository to enable downloading backup archives from the interface."
-style = "warning"

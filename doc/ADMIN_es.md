@@ -1,5 +1,5 @@
 >[!WARNING]
-> Hasta la versión 1.3.1, se debe aplicar un **parche** para poder acceder a ciertas rutas. Proviene del repositorio de [GitHub de Saltcorn](https://github.com/saltcorn/saltcorn/issues/3660)
+> Hasta la versión 1.3.1, se aplica un **parche** para poder acceder a ciertas rutas. Proviene del repositorio de [GitHub de Saltcorn](https://github.com/saltcorn/saltcorn/issues/3660)
 > El parche debe ejecutarse desde el botón "patcher" en el panel de control.
 ---
 

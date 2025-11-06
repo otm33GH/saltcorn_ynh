@@ -1,6 +1,5 @@
 > [!WARNING]
-> Jusqu'à la version 1.3.1, un **patch** doit être appliqué pour pouvoir accéder à certaines routes. Il provient du [dépôt github de saltcorn](https://github.com/saltcorn/saltcorn/issues/3660).
-> Le patch doit être lancé depuis la commander "patcher" dans le panneau de configuration.
+> Jusqu'à la version 1.3.1, un **patch** est appliqué pour pouvoir accéder à certaines routes. Il provient du [dépôt github de saltcorn](https://github.com/saltcorn/saltcorn/issues/3660).
 
 ---
 

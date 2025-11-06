@@ -1,5 +1,5 @@
 > [!WARNING]
-> Up to version 1.3.1, a **patch** must be applied to access certain routes. It comes from the Saltcorn GitHub repository
+> Up to version 1.3.1, a **patch** is applied to access certain routes. It comes from the Saltcorn GitHub repository.
 ---
 1️⃣ **Admin and User Documentation**
 

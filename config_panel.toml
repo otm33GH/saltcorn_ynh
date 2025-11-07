@@ -27,11 +27,12 @@ yes = "true"
 no = "false"
 
 
-[main.conf]
-name = "Patch"
-[main.conf.patch]
-type = "button"
-ask = "patcher"
-help.fr = "Appliquer le patch `admin.js` du dépôt saltcorn pour pouvoir télécharger les archives de sauvegarde depuis l'interface."
-help.en = "Apply the `admin.js` patch from the Saltcorn repository to enable downloading backup archives from the interface."
-style = "warning"
+[main.limit_size]
+name.en = "Upload limit size"
+name.fr = "Téléchargement de fichiers"
+
+[main.limit_size.upload_max_size]
+ask.fr = "Taille limite pour le téléchargement des fichiers en Mo"
+ask.en = "Size limit file upload (Mb)"
+type = "number"
+bind = "null"

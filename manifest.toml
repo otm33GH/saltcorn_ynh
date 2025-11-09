@@ -62,8 +62,8 @@ ram.runtime = "1500M"
     
 [resources]    
     [resources.sources.main]
-    url = "https://github.com/saltcorn/saltcorn/archive/refs/tags/v1.3.1.tar.gz" 
-    sha256 = "56de23116ac9cfe01c9be2efd958bfaaf2d0883305a8731d6c3b2c1636436cfe"
+    url = "https://github.com/saltcorn/saltcorn/archive/refs/tags/v1.4.0.tar.gz" 
+    sha256 = "9000457c8386587bda419a1b0c60452ef4f7a98cd50705fb0629f45ae30f79d6"
     autoupdate.strategy = "latest_github_tag"
     autoupdate.assets = "tar.gz"
     

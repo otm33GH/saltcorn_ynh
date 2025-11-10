@@ -149,6 +149,7 @@ ynh_config_add_nginx
 # ynh_app_setting_set --app=$app --key=version --value=$version
 ynh_app_setting_set --app=$app --key=jwt_secret --value=$jwt_secret
 ynh_app_setting_set --app=$app --key=session_secret --value=$session_secret
+ynh_app_setting_set --app=$app --key=upload_max_size --value=$upload_max_size
 
 ynh_config_add_systemd
 
